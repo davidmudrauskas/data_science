@@ -1,2 +1,10 @@
-food_environment/data/*
+# Ignore data
+food_environment/raw_data/*
+food_environment/processed_data/*
+
+# Ignore PySpark artifacts
+*__pycache__*
+derby.log
+metastore_db
+
 .ipynb_checkpoints

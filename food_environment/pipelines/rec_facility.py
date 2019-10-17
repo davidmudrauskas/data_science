@@ -1,25 +1,19 @@
 import os
-from pyspark.sql import functions
+from pyspark.sql import SparkSession, functions
 from pyspark.sql.utils import AnalysisException
+from pipeline_utils import get_dfs
 
-DATA_DIRECTORY = '/Users/dmudrauskas/Work/data_science/food_environment/data'
+PROJECT_DIRECTORY = '/Users/dmudrauskas/Work/data_science/food_environment'
+RAW_DATA_DIRECTORY = PROJECT_DIRECTORY + '/raw_data'
+PROCESSED_DATA_DIRECTORY = PROJECT_DIRECTORY + '/processed_data'
 
-def get_dfs():
-  # Simple abstract way to read all data files
-  dfs = {}
-  
-  filenames = os.listdir(DATA_DIRECTORY)
-  
-  for f in filenames:
-    # Name dataframe after filename without extension
-    df_name = f.lower().split('.')[0]
-    data_path = '/'.join([DATA_DIRECTORY, f])
-    dfs[df_name] = spark.read.csv(data_path, header=True)
-  
-  return dfs
-
+spark = SparkSession \
+  .builder \
+  .appName("Rec facility data") \
+  .getOrCreate()
 
 def get_rec_facility_data(yy):
+  dfs = get_dfs(spark, RAW_DATA_DIRECTORY)
   health = dfs['health']
   
   try:
@@ -34,12 +28,13 @@ def get_rec_facility_data(yy):
   except AnalysisException:
     print("No rec facility data for '{}".format(yy))
 
+def main():
+  # Restructure table into time series extended by adding rows instead of columns
+  rec_facilities_2009 = get_rec_facility_data('09')
+  rec_facilities_2014 = get_rec_facility_data('14')
 
-dfs = get_dfs()
+  rec_facilities = rec_facilities_2009.union(rec_facilities_2014)
+  rec_facilities.toPandas().to_csv(PROCESSED_DATA_DIRECTORY + '/rec_facilities.csv', header=True, index=False)
 
-# Restructure table into time series extended by adding rows instead columns
-rec_facilities_2009 = get_rec_facility_data('09')
-rec_facilities_2014 = get_rec_facility_data('14')
-
-rec_facilities = rec_facilities_2009.union(rec_facilities_2014)
-rec_facilities.toPandas().to_csv(DATA_DIRECTORY + '/rec_facilities.csv', header=True, index=False)
+if __name__ == '__main__':
+  main()
